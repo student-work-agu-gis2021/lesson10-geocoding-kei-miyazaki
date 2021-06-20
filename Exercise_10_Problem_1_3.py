@@ -12,6 +12,9 @@ import pandas as pd
 # Read the data (replace "None" with your own code)
 data = None
 # YOUR CODE HERE 1 to read the data
+fp = r"data/shopping_center.txt"
+
+data = pd.read_csv(fp,sep=';')
 
 #TEST COEE
 # Check your input data
@@ -25,6 +28,8 @@ from geopandas.tools import geocode
 
 # Geocode addresses using Nominatim. Remember to provide a custom "application name" in the user_agent parameter!
 #YOUR CODE HERE 2 for geocoding
+geo = geocode(data['name'],provider='nominatim',user_agent='jibinGIS')
+
 
 #TEST CODE
 # Check the geocoded output
@@ -38,6 +43,7 @@ print(type(geo))
 # Check that the coordinate reference system of the geocoded result is correctly defined, and **reproject the layer into JGD2011** (EPSG:6668):
 
 # YOUR CODE HERE 3 to set crs.
+geo = geo.to_crs(epsg=6668)
 
 #TEST CODE
 # Check layer crs
@@ -45,7 +51,7 @@ print(geo.crs)
 
 
 # YOUR CODE HERE 4 to join the tables
-geodata = None
+geodata = geo.join(data)
 
 #TEST CODE
 # Check the join output
@@ -57,6 +63,9 @@ print(geodata.head())
 # Define output filepath
 out_fp = None
 # YOUR CODE HERE 5 to save the output
+outfp = r"data/shopping_centers.shp"
+
+geodata.to_file(outfp)
 
 # TEST CODE
 # Print info about output file
@@ -69,8 +78,11 @@ print("Geocoded output is stored in this file:", out_fp)
  
 
 # YOUR CODE HERE 6 to create a new column
+geodata['buffer'] = None
 
 # YOUR CODE HERE 7 to set buffer column
+geodata = geodata.to_crs(espg=32634)
+geodata['buffer'] = geodata['geometry'].buffer(distance=1500)
 
 #TEST CODE
 print(geodata.head())
@@ -88,7 +100,7 @@ print(round(gpd.GeoSeries(geodata["buffer"]).area / 1000000))
 # - Replace the values in `geometry` column with the values of `buffer` column:
 
 # YOUR CODE HERE 8 to replace the values in geometry
-
+geodata['geometry'] = geodata['buffer']
 #TEST CODE
 print(geodata.head())
 
@@ -99,6 +111,17 @@ print(geodata.head())
 # 
 
 # YOUR CODE HERE 9
+add_fp =r"data/500m_mesh_suikei_2018_shape_13/500m_mesh_2018_13.500m_mesh_2018_13.shp"
+
+pop = gpd.read_file(add_fp)
+
+pop = pop[["PTN_2020","geometry"]]
+
+print(pop.crs)
+print(geodata.crs)
+print(geodata.crs == pop.crs)
+
+
 # Read population grid data for 2018 into a variable `pop`. 
 
 #TEST CODE
@@ -112,10 +135,20 @@ print(pop.head(3))
 
 # Create a spatial join between grid layer and buffer layer. 
 # YOUR CDOE HERE 10 for spatial join
+geodata = geodata.to_crs(pop.crs)
 
+join = gpd.sjoin(geodata, pop, how="inner", op="intersects")
+print("join : pop")
+print(len(join), " : ", len(pop))
+
+tokyu = join.loc[join["name"] == "Tokyu Department Store"]
+azabu = join.loc[join["name"] == "Seibu Shibuya Store"]
+seibu = join.loc[join["name"] == "National Azabu"]
 
 # YOUR CODE HERE 11 to report how many people live within 1.5 km distance from each shopping center
-
+print(round(tokyu["PTN_2020"].sum()),"people live within 1.5 km from Tokyu Department Store")
+print(round(azabu["PTN_2020"].sum()),"people live within 1.5 km from Seibu Shibuya Store")
+print(round(seibu["PTN_2020"].sum()),"people live within 1.5 km from National Azabu")
 # **Reflections:**
 #     
 # - How challenging did you find problems 1-3 (on scale to 1-5), and why?
@@ -123,5 +156,5 @@ print(pop.head(3))
 # - What was difficult?
 
 # YOUR ANSWER HERE
-
+it was difficult to find the answer from the data
 # Well done!
